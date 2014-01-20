@@ -57,15 +57,23 @@
 #pragma mark Game Controller Handling
 
 - (void)setupController {
-    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0f) {
+    if ([GCController class]) {
         NSArray *controllers = [GCController controllers];
         // Grab first controller
         // TODO: Add support for multiple controllers
         gameController = [controllers firstObject];
+
+        __typeof__(self) __weak weakSelf = self;
+
+        gameController.controllerPausedHandler = ^(GCController *controller) {
+            if (weakSelf.pauseHandler) {
+                weakSelf.pauseHandler(weakSelf);
+            }
+        };
     }
 }
 
-- (BOOL)gameControllerConnected {
+- (BOOL)isGameControllerConnected {
     return (gameController != nil);
 }
 

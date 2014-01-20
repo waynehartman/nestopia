@@ -10,6 +10,8 @@
 
 @class GameControllerManager;
 
+typedef void(^GameControllerPauseHandler)(GameControllerManager *gameControllerManager);
+
 @protocol GameControllerManagerDelegate <NSObject>
 
 @required
@@ -24,10 +26,12 @@
 
 - (NestopiaPadInput)currentControllerInput;
 
-@property (nonatomic, readonly) BOOL gameControllerConnected;
+@property (nonatomic, readonly, getter = isGameControllerConnected) BOOL gameControllerConnected;
 
 @property (nonatomic) BOOL swapAB;
 
 @property (nonatomic, weak) id<GameControllerManagerDelegate> delegate;
+
+@property (nonatomic, copy) GameControllerPauseHandler pauseHandler;
 
 @end

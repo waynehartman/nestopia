@@ -46,16 +46,16 @@
 @property (nonatomic, strong) PadRoundTextButton *startButton;
 @property (nonatomic, strong) UIButton *menuButton;
 @property (nonatomic, strong) RoundTextMaskView *menuMaskView;
+@property (nonatomic, strong) UIActionSheet *saveStateSheet;
+@property (nonatomic, strong) NestopiaCore *nestopiaCore;
 
 @end
 
 
 @implementation GamePlayViewController {
-	UIActionSheet *saveStateSheet;
     bool pad1;
     
     AudioPlayer *audioPlayer;
-    NestopiaCore *nestopiaCore;
     
     GameControllerManager *gameControllerManager;
 }
@@ -78,11 +78,11 @@
 }
 
 - (void)setupEmulator {
-    nestopiaCore = [NestopiaCore sharedCore];
+    _nestopiaCore = [NestopiaCore sharedCore];
     
-    nestopiaCore.gamePath = self.game.path;
-    nestopiaCore.gameSavePath = self.game.savePath;
-    BOOL success = [nestopiaCore powerOn];
+    _nestopiaCore.gamePath = self.game.path;
+    _nestopiaCore.gameSavePath = self.game.savePath;
+    BOOL success = [_nestopiaCore powerOn];
 	
     NSLog(@"%s loading image at path %@", __PRETTY_FUNCTION__, self.game.path);
     
@@ -98,13 +98,13 @@
 	}
     
 	if (self.shouldLoadState) {
-		[nestopiaCore loadState];
+		[_nestopiaCore loadState];
 	}
     
     audioPlayer = [[AudioPlayer alloc] init];
-    nestopiaCore.audioDelegate = audioPlayer;
+    _nestopiaCore.audioDelegate = audioPlayer;
     
-    nestopiaCore.inputDelegate = self;
+    _nestopiaCore.inputDelegate = self;
     
     pad1 = YES;
 }
@@ -119,19 +119,19 @@
             }
         }
         
-        nestopiaCore.gameGenieCodes = gameGenieCodes;
+        _nestopiaCore.gameGenieCodes = gameGenieCodes;
     } else {
-        nestopiaCore.gameGenieCodes = nil;
+        _nestopiaCore.gameGenieCodes = nil;
     }
 }
 
-#pragma mark Dealloc
+#pragma mark - Dealloc
 
 - (void)dealloc {
-    [nestopiaCore powerOff];
+    [_nestopiaCore powerOff];
 }
 
-#pragma mark Life cycle
+#pragma mark - Life cycle
 
 - (void)loadView {
     [super loadView];
@@ -140,7 +140,7 @@
     
     self.screenView = [[ScreenView alloc] init];
     self.screenView.antialiasing = [[self.game.settings objectForKey:@"antiAliasing"] boolValue];
-    nestopiaCore.videoDelegate = self.screenView;
+    _nestopiaCore.videoDelegate = self.screenView;
     [self.view addSubview:self.screenView];
     
     self.buttonsView = [[UIView alloc] init];
@@ -201,16 +201,20 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     
-    [self setButtonsHiddenForGamepad:gameControllerManager.gameControllerConnected];
+    [self setButtonsHiddenForGamepad:gameControllerManager.isGameControllerConnected];
+    
+    if (gameControllerManager.isGameControllerConnected) {
+        [self setupGameControllerPauseHandler];
+    }
 
     [self updateGameGenieCodes];
-    [nestopiaCore startEmulation];
+    [_nestopiaCore startEmulation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     
-    [nestopiaCore stopEmulation];
+    [_nestopiaCore stopEmulation];
     
     [[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationFade];
 }
@@ -299,7 +303,7 @@
 }
 
 - (CGRect)frameForScreenView {
-    CGSize nativeSize = nestopiaCore.nativeResolution;
+    CGSize nativeSize = _nestopiaCore.nativeResolution;
     CGFloat nativeRatio = nativeSize.width / nativeSize.height;
     
     CGSize viewSize = self.view.bounds.size;
@@ -324,32 +328,32 @@
 }
 
 - (void)menuButtonClicked {
-    [nestopiaCore stopEmulation];
+    [_nestopiaCore stopEmulation];
     
-    saveStateSheet = [[UIActionSheet alloc] init];
-    saveStateSheet.title = self.game.title;
+    _saveStateSheet = [[UIActionSheet alloc] init];
+    _saveStateSheet.title = self.game.title;
     
     if (strstr([self.game.path cStringUsingEncoding: NSASCIIStringEncoding], "(VS)")) {
-        [saveStateSheet addButtonWithTitle: @"Insert Coin"];
+        [_saveStateSheet addButtonWithTitle: @"Insert Coin"];
     }
     
     if (pad1) {
-        [saveStateSheet addButtonWithTitle: @"Switch to Player 2"];
+        [_saveStateSheet addButtonWithTitle: @"Switch to Player 2"];
     } else {
-        [saveStateSheet addButtonWithTitle: @"Switch to Player 1"];
+        [_saveStateSheet addButtonWithTitle: @"Switch to Player 1"];
     }
     
-    [saveStateSheet addButtonWithTitle: @"Game Settings"];
-    [saveStateSheet addButtonWithTitle: @"Save and Exit"];
-    [saveStateSheet addButtonWithTitle: @"Exit Game"];
+    [_saveStateSheet addButtonWithTitle: @"Game Settings"];
+    [_saveStateSheet addButtonWithTitle: @"Save and Exit"];
+    [_saveStateSheet addButtonWithTitle: @"Exit Game"];
     
-    [saveStateSheet addButtonWithTitle: @"Resume"];
+    [_saveStateSheet addButtonWithTitle: @"Resume"];
     
-    saveStateSheet.cancelButtonIndex = 4;
-    saveStateSheet.destructiveButtonIndex = 3;
-    saveStateSheet.delegate = self;
+    _saveStateSheet.cancelButtonIndex = 4;
+    _saveStateSheet.destructiveButtonIndex = 3;
+    _saveStateSheet.delegate = self;
     
-    [saveStateSheet showInView: self.view];
+    [_saveStateSheet showInView: self.view];
 }
 
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
@@ -357,13 +361,13 @@
 }
 
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
-	if (actionSheet == saveStateSheet) {
+	if (actionSheet == _saveStateSheet) {
         if (!strstr([self.game.path cStringUsingEncoding: NSASCIIStringEncoding], "(VS)")) {
             buttonIndex++;
         }
         
 		if (buttonIndex == 3) { /* Save and Exit Game */
-			[nestopiaCore saveState];
+			[_nestopiaCore saveState];
             [self.delegate gamePlayViewControllerDidFinish:self];
             return;
 		} else if (buttonIndex == 2) { /* Game Settings */
@@ -375,28 +379,30 @@
             [self presentViewController:navCon animated:YES completion:nil];
             return;
         } else if (buttonIndex == 0) { /* Insert Coin */
-            [nestopiaCore startEmulation];
+            [_nestopiaCore startEmulation];
             //[emulatorCore insertCoin1]; // TODO
             
             return;
         } else if (buttonIndex == 1) { /* Controller Toggle */
             if (pad1) {
-                [nestopiaCore activatePad2];
+                [_nestopiaCore activatePad2];
                 pad1 = NO;
             } else {
                 pad1 = YES;
-                [nestopiaCore activatePad1];
+                [_nestopiaCore activatePad1];
             }
             
-            [nestopiaCore startEmulation];
+            [_nestopiaCore startEmulation];
             return;
         } else if (buttonIndex == 5) { /* Resume Game */
-            [nestopiaCore startEmulation];
+            [_nestopiaCore startEmulation];
             return;
         } else {
             [self.delegate gamePlayViewControllerDidFinish:self];
             return;
         }
+
+        _saveStateSheet = nil;
 	}
 }
 
@@ -409,12 +415,12 @@
 }
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
-    [nestopiaCore stopEmulation];
+    [_nestopiaCore stopEmulation];
 }
 
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
     [self updateGameGenieCodes];
-    [nestopiaCore startEmulation];
+    [_nestopiaCore startEmulation];
 }
 
 - (void)settingsDoneButtonClicked {
@@ -429,7 +435,22 @@
     return gameControllerManager.gameControllerConnected;
 }
 
-#pragma mark GameController Management
+#pragma mark - GameController Management
+
+- (void)setupGameControllerPauseHandler {
+    __typeof__(self) __weak weakSelf = self;
+    
+    gameControllerManager.pauseHandler = ^(GameControllerManager *manager) {
+        if (weakSelf.saveStateSheet) {
+            weakSelf.saveStateSheet.delegate = nil;
+            [weakSelf.saveStateSheet dismissWithClickedButtonIndex:0 animated:YES];
+            [weakSelf.nestopiaCore startEmulation];
+            weakSelf.saveStateSheet = nil;
+        } else {
+            [weakSelf menuButtonClicked];
+        }
+    };
+}
 
 - (void)setButtonsHiddenForGamepad:(BOOL)hidden {
     self.directionButton.hidden = hidden;
@@ -437,17 +458,25 @@
     self.bButton.hidden = hidden;
     
     [self setNeedsStatusBarAppearanceUpdate];
+
+    if (hidden) {   //  Need to disable the idle timer
+        [UIApplication sharedApplication].idleTimerDisabled = YES;
+    } else {
+        [UIApplication sharedApplication].idleTimerDisabled = NO;
+    }
 }
 
 - (void)gameControllerManagerGamepadDidConnect:(GameControllerManager *)controllerManager {
     [self setButtonsHiddenForGamepad:YES];
+    [self setupGameControllerPauseHandler];
 }
 
 - (void)gameControllerManagerGamepadDidDisconnect:(GameControllerManager *)controllerManager {
     [self setButtonsHiddenForGamepad:NO];
+    gameControllerManager.pauseHandler = nil;
 }
 
-#pragma mark NestopiaCoreInputDelegate
+#pragma mark - NestopiaCoreInputDelegate
 
 - (NestopiaInput)nestopiaCoreCallbackInput {
     NestopiaPadInput padInput = 0;
