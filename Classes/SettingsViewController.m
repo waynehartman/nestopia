@@ -22,6 +22,23 @@
 #import "GamePlayViewController.h"
 #import "DisclosureIndicator.h"
 
+typedef NS_ENUM(NSInteger, SettingsSection) {
+    SettingsSectionGlobalSettings = 0,
+    SettingsSectionGameGenie,
+    SettingsSectionFavorites,
+    SettingsSectionCount
+};
+
+typedef NS_ENUM(NSInteger, GlobalSetting) {
+    GlobalSettingIntegralScale = 0,
+    GlobalSettingAspectRatio,
+    GlobalSettingAntiAliasing,
+    GlobalSettingSwapAB,
+    GlobalSettingStickyController,
+    GlobalSettingControllers,
+    GlobalSettingCount
+};
+
 @implementation SettingsViewController
 
 - (void)loadSettings {
@@ -142,39 +159,45 @@
     if (!self.game) {
         return 1;
     } else {
-        return 3;
+        return SettingsSectionCount;
     }
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    switch (section) {
-        case(0):
-			return 6;
+    SettingsSection settingsSection = section;
+
+    switch (settingsSection) {
+        case(SettingsSectionGlobalSettings):
+			return GlobalSettingCount;
 			break;
-		case(1):
+		case(SettingsSectionGameGenie):
 			return 5;
 			break;
-        case(2):
+        case(SettingsSectionFavorites):
             return 1;
             break;
+        default:
+            return 0;
 	}
 	
 	return 0;
 }
 
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { 
-	switch (section) {
-		case(0):
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    SettingsSection settingsSection = section;
+	switch (settingsSection) {
+		case(SettingsSectionGlobalSettings):
 			return @"Global Settings";
-			break;
-		case(1):
+		case(SettingsSectionGameGenie):
 			return @"Game Genie";
-			break;
+        default:
+            return nil;
 	}
-	return nil;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    SettingsSection section = indexPath.section;
+
 	NSString *CellIdentifier = [NSString stringWithFormat: @"%d:%d", [indexPath indexAtPosition: 0],
 								[indexPath indexAtPosition:1]];
 	
@@ -187,40 +210,47 @@
         DisclosureIndicator *accessory = [DisclosureIndicator accessoryWithColor: [UIColor colorWithHue: 0 saturation: 0 brightness: .5 alpha: 1.0]];
         accessory.highlightedColor = [UIColor blackColor];
 
-		switch ([indexPath indexAtPosition: 0]) {
-			case(0):
-				switch([indexPath indexAtPosition: 1]) {
-					case(0):
+		switch (section) {
+			case(SettingsSectionGlobalSettings): {
+                GlobalSetting row = indexPath.row;
+
+				switch(row) {
+					case(GlobalSettingIntegralScale):
 						cell.accessoryView = integralScaleControl;
 						cell.textLabel.text = @"Integral Scale";
 						break;
-					case(1):
+					case(GlobalSettingAspectRatio):
 						cell.accessoryView = aspectRatioControl;
 						cell.textLabel.text = @"Aspect Ratio";
 						break;
-                    case(2):
+                    case(GlobalSettingAntiAliasing):
                         cell.accessoryView = antiAliasControl;
                         cell.textLabel.text = @"Anti-Aliasing";
                         break;
-                    case(3):
+                    case(GlobalSettingSwapAB):
 						cell.accessoryView = swapABControl;
 						cell.textLabel.text = @"Swap A/B";
 						break;
-                    case(4):
+                    case(GlobalSettingStickyController):
                         cell.accessoryView = controllerStickControl;
                         cell.textLabel.text = @"Sticky Controller";
                         break;
-                    case(5):
+                    case(GlobalSettingControllers):
                         cell.accessoryView = accessory;
-                        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
+                        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
                             cell.textLabel.text = @"Controller Layout";
-                        else
+                        } else {
                             cell.textLabel.text = @"Controllers";
+                        }
                         cell.selectionStyle = UITableViewCellSelectionStyleBlue;
                         [cell.accessoryView addSubview: controllerLayout];
+                    default: {
+                        //  DO NOTHING
+                    }
 				}
+            }
 				break;
-			case(1):
+			case(SettingsSectionGameGenie):
 				if ([indexPath indexAtPosition: 1] == 0) {
                     cell.accessoryView = gameGenieControl;
                     cell.textLabel.text = @"Game Genie";
@@ -239,7 +269,7 @@
 					cell.textLabel.text = [NSString stringWithFormat: @"Code #%d", [indexPath indexAtPosition: 1]];
 				}
                 break;
-            case(2):
+            case(SettingsSectionFavorites):
             {
                 if (! self.game.favorite) {
                     cell.textLabel.text = @"Add to Favorites";
@@ -250,6 +280,9 @@
                 cell.selectionStyle  = UITableViewCellSelectionStyleBlue;
                 break;
             }
+            default: {
+                //  DO NOTHING
+            }
 		}
 	}
 	
@@ -259,7 +292,7 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath: indexPath];
 
-    if (indexPath.section == 0 && indexPath.row == 5) {
+    if (indexPath.section == SettingsSectionGlobalSettings && indexPath.row == GlobalSettingControllers) {
 		MultiValueViewController *viewController = [[MultiValueViewController alloc] initWithStyle: UITableViewStyleGrouped];
         viewController.options = [NSArray arrayWithArray: controllerLayoutDescriptions];
         viewController.selectedItemIndex = controllerLayoutIndex;
@@ -267,7 +300,7 @@
 		[self.navigationController pushViewController: viewController animated: YES];
     }
     
-    if (indexPath.section == 2 && indexPath.row == 0) {
+    if (indexPath.section == SettingsSectionFavorites && indexPath.row == 0) {
         self.game.favorite = !self.game.favorite;
         
         if (!self.game.favorite) {
@@ -281,7 +314,7 @@
 }
 
 - (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)section {
-    if (section == 0 && !self.game) {
+    if (section == SettingsSectionGlobalSettings && !self.game) {
         return @"To access Game Genie settings, enter settings from within the active game play menu.";
     }
     return nil;
@@ -292,12 +325,12 @@
 - (BOOL) textFieldShouldReturn:(UITextField *)textField {
 	
 	if (raised == YES) {
-		[UIView beginAnimations: nil context: NULL]; 
-		[UIView setAnimationDuration: 0.3]; 
-		CGRect frame = self.view.frame; 
-		frame.origin.y += 200.0; 
-		self.view.frame = frame; 
-		[UIView commitAnimations]; 
+        [UIView animateWithDuration:0.3 animations:^{
+            CGRect frame = self.view.frame;
+            frame.origin.y += 200.0;
+            self.view.frame = frame;
+        }];
+
 		raised = NO;
 	}
 	
