@@ -23,22 +23,7 @@
 #import "MultiValueViewController.h"
 #import "Game.h"
 
-@interface SettingsViewController : UITableViewController <UITextFieldDelegate,MultiValueViewControllerDelegate> {
-	UIBarButtonItem *leftButton;
-    NSArray *controllerLayoutDescriptions;
-    
-	UISwitch *swapABControl;
-	UISwitch *integralScaleControl;
-	UISwitch *aspectRatioControl;
-	UISwitch *gameGenieControl;
-    UISwitch *antiAliasControl;
-    UISwitch *controllerStickControl;
-		
-	UITextField *gameGenieCodeControl[4];
-    UITextField *controllerLayout;
-    int controllerLayoutIndex;
-	bool raised;
-}
+@interface SettingsViewController : UITableViewController 
 
 @property (nonatomic, strong) Game *game;
 

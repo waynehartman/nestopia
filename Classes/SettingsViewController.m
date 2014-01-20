@@ -39,7 +39,30 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
     GlobalSettingCount
 };
 
+const NSInteger MAX_GAME_GENIE_CODES = 4;
+
+@interface SettingsViewController ()<UITextFieldDelegate,MultiValueViewControllerDelegate> {
+    int controllerLayoutIndex;
+	bool raised;
+}
+
+@property (nonatomic, strong) NSArray *gameGenieCodeControls;
+@property (nonatomic, strong) UITextField *controllerLayout;
+@property (nonatomic, strong) UISwitch *controllerStickControl;
+@property (nonatomic, strong) UISwitch *swapABControl;
+@property (nonatomic, strong) UISwitch *integralScaleControl;
+@property (nonatomic, strong) UISwitch *aspectRatioControl;
+@property (nonatomic, strong) UISwitch *gameGenieControl;
+@property (nonatomic, strong) UISwitch *antiAliasControl;
+
+@property (nonatomic, strong) UIBarButtonItem *leftButton;
+@property (nonatomic, strong) NSArray *controllerLayoutDescriptions;
+
+@end
+
 @implementation SettingsViewController
+
+#pragma mark - Settings Persistence
 
 - (void)loadSettings {
     NSDictionary *settings;
@@ -54,21 +77,22 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
 
     /* Global Settings */
     
-    swapABControl.on = [[settings objectForKey: @"swapAB"] boolValue];
-    antiAliasControl.on = [[settings objectForKey: @"antiAliasing"] boolValue];
-    controllerStickControl.on = [[settings objectForKey: @"controllerStickControl"] boolValue];
-    integralScaleControl.on = [[settings objectForKey: @"integralScale"] boolValue];
-    aspectRatioControl.on = ([settings objectForKey: @"aspectRatio"] == nil) ? YES : [[settings objectForKey: @"aspectRatio"] boolValue];
+    self.swapABControl.on = [[settings objectForKey: @"swapAB"] boolValue];
+    self.antiAliasControl.on = [[settings objectForKey: @"antiAliasing"] boolValue];
+    self.controllerStickControl.on = [[settings objectForKey: @"controllerStickControl"] boolValue];
+    self.integralScaleControl.on = [[settings objectForKey: @"integralScale"] boolValue];
+    self.aspectRatioControl.on = ([settings objectForKey: @"aspectRatio"] == nil) ? YES : [[settings objectForKey: @"aspectRatio"] boolValue];
     
     controllerLayoutIndex =  [[settings objectForKey: @"controllerLayout"] intValue];
-    controllerLayout.text = [controllerLayoutDescriptions objectAtIndex: controllerLayoutIndex];
+    self.controllerLayout.text = [self.controllerLayoutDescriptions objectAtIndex: controllerLayoutIndex];
     
     /* Game-Specific Settings */
     
     if (self.game) {
-        gameGenieControl.on = [[settings objectForKey: @"gameGenie"] boolValue];
-        for(int i = 0; i < 4; i++) {
-            gameGenieCodeControl[i].text = [settings objectForKey: [NSString stringWithFormat: @"gameGenieCode%d", i]];
+        self.gameGenieControl.on = [[settings objectForKey: @"gameGenie"] boolValue];
+        for(int i = 0; i < MAX_GAME_GENIE_CODES; i++) {
+            UITextField *gameGenieCodeControl = self.gameGenieCodeControls[i];
+            gameGenieCodeControl.text = [settings objectForKey: [NSString stringWithFormat: @"gameGenieCode%d", i]];
         }
     }
 }
@@ -76,17 +100,18 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
 - (void)saveSettings {
     NSMutableDictionary *settings = [NSMutableDictionary dictionary];
     
-    [settings setObject:@(swapABControl.on) forKey:@"swapAB"];
-    [settings setObject:@(integralScaleControl.on) forKey:@"integralScale"];
-    [settings setObject:@(aspectRatioControl.on) forKey:@"aspectRatio"];
-    [settings setObject:@(antiAliasControl.on) forKey:@"antiAliasing"];
-    [settings setObject:@(controllerStickControl.on) forKey:@"controllerStickControl"];
+    [settings setObject:@(self.swapABControl.on) forKey:@"swapAB"];
+    [settings setObject:@(self.integralScaleControl.on) forKey:@"integralScale"];
+    [settings setObject:@(self.aspectRatioControl.on) forKey:@"aspectRatio"];
+    [settings setObject:@(self.antiAliasControl.on) forKey:@"antiAliasing"];
+    [settings setObject:@(self.controllerStickControl.on) forKey:@"controllerStickControl"];
     [settings setObject:@(controllerLayoutIndex) forKey:@"controllerLayout"];
     
     if (self.game) {
-        [settings setObject:@(gameGenieControl.on) forKey:@"gameGenie"];
-        for (int i = 0; i < 4; i++) {
-            [settings setObject:(gameGenieCodeControl[i].text ?: @"") forKey:[NSString stringWithFormat: @"gameGenieCode%d", i]];
+        [settings setObject:@(self.gameGenieControl.on) forKey:@"gameGenie"];
+        for (int i = 0; i < MAX_GAME_GENIE_CODES; i++) {
+            UITextField *gameGenieCodeControl = self.gameGenieCodeControls[i];
+            [settings setObject:(gameGenieCodeControl.text ?: @"") forKey:[NSString stringWithFormat: @"gameGenieCode%d", i]];
         }
 	}
     
@@ -97,6 +122,8 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
     }
 }
 
+#pragma mark - Initialization
+
 - (id) init {
     self = [super initWithStyle: UITableViewStyleGrouped];
 	
@@ -104,34 +131,28 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
         UIImage *tabBarImage = [UIImage imageNamed: @"Settings.png"];
         self.tabBarItem = [[UITabBarItem alloc] initWithTitle: @"Default Settings" image: tabBarImage tag: 2];
 
-        controllerLayoutDescriptions = [[NSArray alloc] initWithObjects: @"Game Pad + Zapper", @"Zapper Only", nil];
+        self.controllerLayoutDescriptions = [[NSArray alloc] initWithObjects: @"Game Pad + Zapper", @"Zapper Only", nil];
 		raised = NO;
-		swapABControl = [[UISwitch alloc] initWithFrame: CGRectZero];
-		integralScaleControl = [[UISwitch alloc] initWithFrame: CGRectZero];
-		aspectRatioControl = [[UISwitch alloc] initWithFrame: CGRectZero];
-		gameGenieControl = [[UISwitch alloc] initWithFrame: CGRectZero];
-        antiAliasControl = [[UISwitch alloc] initWithFrame: CGRectZero];
-        controllerStickControl = [[UISwitch alloc] initWithFrame: CGRectZero];
+		self.swapABControl = [[UISwitch alloc] initWithFrame: CGRectZero];
+		self.integralScaleControl = [[UISwitch alloc] initWithFrame: CGRectZero];
+		self.aspectRatioControl = [[UISwitch alloc] initWithFrame: CGRectZero];
+		self.gameGenieControl = [[UISwitch alloc] initWithFrame: CGRectZero];
+        self.antiAliasControl = [[UISwitch alloc] initWithFrame: CGRectZero];
+        self.controllerStickControl = [[UISwitch alloc] initWithFrame: CGRectZero];
 
-        controllerLayout = [[UITextField alloc] initWithFrame: CGRectMake(-170, -12.0, 160.0, 30.0)];
-        controllerLayout.textColor = [UIColor colorWithHue: .6027 saturation: .63 brightness: .52 alpha: 1.0];
-        controllerLayout.enabled = NO;
-		controllerLayout.textAlignment = NSTextAlignmentRight;
-		controllerLayout.contentVerticalAlignment = UIControlContentVerticalAlignmentBottom;
-
-        for(int i = 0; i < 4; i++) {
-			gameGenieCodeControl[i] = [[UITextField alloc] initWithFrame: CGRectMake(100.0, 5.0, 200.0, 35.0)];
-			gameGenieCodeControl[i].contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-			gameGenieCodeControl[i].delegate = self;
-			gameGenieCodeControl[i].placeholder = @"Empty";
-			gameGenieCodeControl[i].returnKeyType = UIReturnKeyDone;
-		}
+        self.controllerLayout = [[UITextField alloc] initWithFrame: CGRectMake(-170, -12.0, 160.0, 30.0)];
+        self.controllerLayout.textColor = [UIColor colorWithHue: .6027 saturation: .63 brightness: .52 alpha: 1.0];
+        self.controllerLayout.enabled = NO;
+		self.controllerLayout.textAlignment = NSTextAlignmentRight;
+		self.controllerLayout.contentVerticalAlignment = UIControlContentVerticalAlignmentBottom;
         
         [self loadSettings];
         [self saveSettings];
 	}
 	return self;
 }
+
+#pragma mark - View Lifecycle
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear: animated];
@@ -152,8 +173,28 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
     [super didReceiveMemoryWarning];
 }
 
+- (NSArray *)gameGenieCodeControls {
+    if (!_gameGenieCodeControls) {
+        NSMutableArray *gameGenieCodeControls = [[NSMutableArray alloc] init];
 
-/* UITableViewDataSource methods */
+        for(int i = 0; i < MAX_GAME_GENIE_CODES; i++) {
+			UITextField *gameGenieCodeControl = [[UITextField alloc] initWithFrame: CGRectMake(100.0, 5.0, 200.0, 35.0)];
+			gameGenieCodeControl.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
+			gameGenieCodeControl.delegate = self;
+			gameGenieCodeControl.placeholder = @"Empty";
+			gameGenieCodeControl.returnKeyType = UIReturnKeyDone;
+
+            [gameGenieCodeControls addObject:gameGenieCodeControl];
+		}
+
+        _gameGenieCodeControls = [gameGenieCodeControls copy];
+    }
+    
+    return _gameGenieCodeControls;
+}
+
+
+#pragma mark - UITableViewDataSource
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     if (!self.game) {
@@ -171,7 +212,7 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
 			return GlobalSettingCount;
 			break;
 		case(SettingsSectionGameGenie):
-			return 5;
+			return MAX_GAME_GENIE_CODES + 1;
 			break;
         case(SettingsSectionFavorites):
             return 1;
@@ -216,23 +257,23 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
 
 				switch(row) {
 					case(GlobalSettingIntegralScale):
-						cell.accessoryView = integralScaleControl;
+						cell.accessoryView = self.integralScaleControl;
 						cell.textLabel.text = @"Integral Scale";
 						break;
 					case(GlobalSettingAspectRatio):
-						cell.accessoryView = aspectRatioControl;
+						cell.accessoryView = self.aspectRatioControl;
 						cell.textLabel.text = @"Aspect Ratio";
 						break;
                     case(GlobalSettingAntiAliasing):
-                        cell.accessoryView = antiAliasControl;
+                        cell.accessoryView = self.antiAliasControl;
                         cell.textLabel.text = @"Anti-Aliasing";
                         break;
                     case(GlobalSettingSwapAB):
-						cell.accessoryView = swapABControl;
+						cell.accessoryView = self.swapABControl;
 						cell.textLabel.text = @"Swap A/B";
 						break;
                     case(GlobalSettingStickyController):
-                        cell.accessoryView = controllerStickControl;
+                        cell.accessoryView = self.controllerStickControl;
                         cell.textLabel.text = @"Sticky Controller";
                         break;
                     case(GlobalSettingControllers):
@@ -243,7 +284,7 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
                             cell.textLabel.text = @"Controllers";
                         }
                         cell.selectionStyle = UITableViewCellSelectionStyleBlue;
-                        [cell.accessoryView addSubview: controllerLayout];
+                        [cell.accessoryView addSubview:self.controllerLayout];
                     default: {
                         //  DO NOTHING
                     }
@@ -251,19 +292,20 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
             }
 				break;
 			case(SettingsSectionGameGenie):
-				if ([indexPath indexAtPosition: 1] == 0) {
-                    cell.accessoryView = gameGenieControl;
+				if ([indexPath indexAtPosition: 1] == 0) {  //  Switch for activating Game Genie
+                    cell.accessoryView = self.gameGenieControl;
                     cell.textLabel.text = @"Game Genie";
                     break;
-				} else {
-					[cell addSubview: gameGenieCodeControl[[indexPath indexAtPosition: 1]-1]];
+				} else {    //  Fields for adding codes
+                    UITextField *gameGenieCodeControl = self.gameGenieCodeControls[[indexPath indexAtPosition: 1]-1];
+					[cell addSubview: gameGenieCodeControl];
 					if (!self.game) {
-						gameGenieCodeControl[[indexPath indexAtPosition: 1]-1].text = nil;
-						gameGenieCodeControl[[indexPath indexAtPosition: 1]-1].placeholder = @"None";
-						gameGenieCodeControl[[indexPath indexAtPosition: 1]-1].enabled = NO;
+						gameGenieCodeControl.text = nil;
+						gameGenieCodeControl.placeholder = @"None";
+						gameGenieCodeControl.enabled = NO;
 					} else {
-						gameGenieCodeControl[[indexPath indexAtPosition: 1]-1].placeholder = @"Empty";
-						gameGenieCodeControl[[indexPath indexAtPosition: 1]-1].enabled = YES;
+						gameGenieCodeControl.placeholder = @"Empty";
+						gameGenieCodeControl.enabled = YES;
 					}
 
 					cell.textLabel.text = [NSString stringWithFormat: @"Code #%d", [indexPath indexAtPosition: 1]];
@@ -289,12 +331,21 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
     return cell;
 }
 
+- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)section {
+    if (section == SettingsSectionGlobalSettings && !self.game) {
+        return @"To access Game Genie settings, enter settings from within the active game play menu.";
+    }
+    return nil;
+}
+
+#pragma mark - UITableViewDelegate
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath: indexPath];
 
     if (indexPath.section == SettingsSectionGlobalSettings && indexPath.row == GlobalSettingControllers) {
 		MultiValueViewController *viewController = [[MultiValueViewController alloc] initWithStyle: UITableViewStyleGrouped];
-        viewController.options = [NSArray arrayWithArray: controllerLayoutDescriptions];
+        viewController.options = [NSArray arrayWithArray:self.controllerLayoutDescriptions];
         viewController.selectedItemIndex = controllerLayoutIndex;
         viewController.delegate = self;
 		[self.navigationController pushViewController: viewController animated: YES];
@@ -313,58 +364,28 @@ typedef NS_ENUM(NSInteger, GlobalSetting) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
-- (NSString *)tableView:(UITableView *)tv titleForFooterInSection:(NSInteger)section {
-    if (section == SettingsSectionGlobalSettings && !self.game) {
-        return @"To access Game Genie settings, enter settings from within the active game play menu.";
-    }
-    return nil;
-}
-
-/* UITextFieldDelegate Methods */
+#pragma mark - UITextFieldDelegate
 
 - (BOOL) textFieldShouldReturn:(UITextField *)textField {
-	
-	if (raised == YES) {
-        [UIView animateWithDuration:0.3 animations:^{
-            CGRect frame = self.view.frame;
-            frame.origin.y += 200.0;
-            self.view.frame = frame;
-        }];
-
-		raised = NO;
-	}
-	
-	self.tableView.scrollEnabled = YES;
     [textField resignFirstResponder];
     return YES;
 }
 
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
-	
-	if (raised == NO) {
-		if (   textField == gameGenieCodeControl[0] 
-			|| textField == gameGenieCodeControl[1]
-			|| textField == gameGenieCodeControl[2] 
-			|| textField == gameGenieCodeControl[3])
-		{
-			[UIView beginAnimations: nil context: NULL]; 
-			[UIView setAnimationDuration: 0.3]; 
-			CGRect frame = self.view.frame; 
-			frame.origin.y -= 200.0; 
-			self.view.frame = frame; 
-			[UIView commitAnimations];
-			raised = YES;
-		}
-	}
+    CGRect location = textField.frame;
+    CGRect tableViewCoordinates = [textField.superview convertRect:location toView:self.tableView];
+
+    [self.tableView scrollRectToVisible:tableViewCoordinates animated:YES];
 }
 
-/* MultiValueViewControllerDelegate methods */
+#pragma mark - MultiValueViewControllerDelegate
 
 - (void) didSelectItemFromList: (MultiValueViewController *)multiValueViewController selectedItemIndex:(int)selectedItemIndex identifier:(id)identifier
 {
     controllerLayoutIndex = selectedItemIndex;
-    controllerLayout.text = [controllerLayoutDescriptions objectAtIndex: controllerLayoutIndex];
+    self.controllerLayout.text = [self.controllerLayoutDescriptions objectAtIndex:controllerLayoutIndex];
     [self saveSettings];
     // [self.tableView reloadData];
 }
+
 @end
